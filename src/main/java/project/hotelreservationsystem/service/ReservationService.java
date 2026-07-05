@@ -1,15 +1,18 @@
 package project.hotelreservationsystem.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import project.hotelreservationsystem.dto.ReservationDto;
-import project.hotelreservationsystem.entity.Customer;
 import project.hotelreservationsystem.entity.Reservation;
 import project.hotelreservationsystem.entity.Room;
-import project.hotelreservationsystem.repository.CustomerRepository;
+import project.hotelreservationsystem.entity.User;
+import project.hotelreservationsystem.exception.ResourceNotFoundException;
 import project.hotelreservationsystem.repository.ReservationRepository;
 import project.hotelreservationsystem.repository.RoomRepository;
+import project.hotelreservationsystem.repository.UserRepository;
 
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -17,15 +20,31 @@ import java.util.List;
 public class ReservationService {
 
     private final ReservationRepository reservationRepository;
-    private final CustomerRepository customerRepository;
     private final RoomRepository roomRepository;
+    private final UserRepository userRepository;
+
+    private User getCurrentUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
 
     public Reservation createReservation(ReservationDto dto) {
-        Customer customer = customerRepository.findById(dto.getCustomerId())
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
+        User customer = getCurrentUser();
 
         Room room = roomRepository.findById(dto.getRoomId())
-                .orElseThrow(() -> new RuntimeException("Room not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+
+        if (!"AVAILABLE".equals(room.getStatus())) {
+            throw new IllegalStateException("Room is not available for booking");
+        }
+
+        long nights = ChronoUnit.DAYS.between(dto.getCheckInDate(), dto.getCheckOutDate());
+        if (nights <= 0) {
+            throw new IllegalArgumentException("Check-out date must be after check-in date");
+        }
+
+        double totalAmount = room.getPricePerNight() * nights;
 
         Reservation reservation = Reservation.builder()
                 .customer(customer)
@@ -34,7 +53,7 @@ public class ReservationService {
                 .checkOutDate(dto.getCheckOutDate())
                 .numberOfGuests(dto.getNumberOfGuests())
                 .reservationStatus("PENDING")
-                .totalAmount(dto.getTotalAmount())
+                .totalAmount(totalAmount)
                 .build();
 
         room.setStatus("OCCUPIED");
@@ -43,13 +62,18 @@ public class ReservationService {
         return reservationRepository.save(reservation);
     }
 
+    public List<Reservation> getMyReservations() {
+        User customer = getCurrentUser();
+        return reservationRepository.findByCustomer_UserId(customer.getUserId());
+    }
+
     public List<Reservation> getAllReservations() {
         return reservationRepository.findAll();
     }
 
     public Reservation getReservationById(Integer id) {
         return reservationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
     }
 
     public Reservation updateStatus(Integer id, String status) {

@@ -1,10 +1,13 @@
 package project.hotelreservationsystem.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import project.hotelreservationsystem.dto.PaymentDto;
 import project.hotelreservationsystem.entity.Payment;
 import project.hotelreservationsystem.entity.Reservation;
+import project.hotelreservationsystem.exception.ResourceNotFoundException;
 import project.hotelreservationsystem.repository.PaymentRepository;
 import project.hotelreservationsystem.repository.ReservationRepository;
 
@@ -19,16 +22,30 @@ public class PaymentService {
 
     public Payment createPayment(PaymentDto dto) {
         Reservation reservation = reservationRepository.findById(dto.getReservationId())
-                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
+
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        boolean isOwner = reservation.getCustomer().getEmail().equals(email);
+        boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities()
+                .stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isOwner && !isAdmin) {
+            throw new AccessDeniedException("You are not allowed to pay for this reservation");
+        }
 
         Payment payment = Payment.builder()
                 .reservation(reservation)
                 .amount(dto.getAmount())
                 .paymentMethod(dto.getPaymentMethod())
-                .paymentStatus(dto.getPaymentStatus() != null ? dto.getPaymentStatus() : "PENDING")
+                .paymentStatus("COMPLETED")
                 .build();
 
-        return paymentRepository.save(payment);
+        Payment saved = paymentRepository.save(payment);
+
+        reservation.setReservationStatus("CONFIRMED");
+        reservationRepository.save(reservation);
+
+        return saved;
     }
 
     public List<Payment> getAllPayments() {
@@ -37,7 +54,7 @@ public class PaymentService {
 
     public Payment getPaymentById(Integer id) {
         return paymentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Payment not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
     }
 
     public List<Payment> getPaymentsByReservation(Integer reservationId) {

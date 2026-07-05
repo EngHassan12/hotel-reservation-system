@@ -29,7 +29,11 @@ public class User {
     private String passwordHash;
 
     @Column(nullable = false)
-    private String role; // ADMIN, STAFF
+    private String role; // ADMIN, STAFF, CUSTOMER
+
+    private String phone;
+
+    private String address;
 
     private LocalDateTime createdAt;
 

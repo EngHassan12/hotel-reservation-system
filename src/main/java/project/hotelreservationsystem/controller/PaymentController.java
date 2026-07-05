@@ -1,7 +1,9 @@
 package project.hotelreservationsystem.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import project.hotelreservationsystem.dto.PaymentDto;
 import project.hotelreservationsystem.entity.Payment;
@@ -18,33 +20,38 @@ public class PaymentController {
     private final PaymentService paymentService;
 
     @PostMapping
-    public ResponseEntity<Payment> createPayment(@RequestBody PaymentDto dto) {
+    public ResponseEntity<Payment> createPayment(@Valid @RequestBody PaymentDto dto) {
         return ResponseEntity.ok(paymentService.createPayment(dto));
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Payment>> getAllPayments() {
         return ResponseEntity.ok(paymentService.getAllPayments());
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Payment> getPaymentById(@PathVariable Integer id) {
         return ResponseEntity.ok(paymentService.getPaymentById(id));
     }
 
     @GetMapping("/reservation/{reservationId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Payment>> getPaymentsByReservation(
             @PathVariable Integer reservationId) {
         return ResponseEntity.ok(paymentService.getPaymentsByReservation(reservationId));
     }
 
     @PutMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Payment> updatePaymentStatus(@PathVariable Integer id,
                                                        @RequestParam String status) {
         return ResponseEntity.ok(paymentService.updatePaymentStatus(id, status));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deletePayment(@PathVariable Integer id) {
         paymentService.deletePayment(id);
         return ResponseEntity.noContent().build();

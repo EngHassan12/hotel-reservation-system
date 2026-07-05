@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import project.hotelreservationsystem.dto.RoomDto;
 import project.hotelreservationsystem.entity.Room;
+import project.hotelreservationsystem.exception.DuplicateResourceException;
+import project.hotelreservationsystem.exception.ResourceNotFoundException;
 import project.hotelreservationsystem.repository.RoomRepository;
 
 import java.util.List;
@@ -16,7 +18,7 @@ public class RoomService {
 
     public Room createRoom(RoomDto dto) {
         if (roomRepository.existsByRoomNumber(dto.getRoomNumber()))
-            throw new RuntimeException("Room number already exists");
+            throw new DuplicateResourceException("Room number already exists");
 
         Room room = Room.builder()
                 .roomNumber(dto.getRoomNumber())
@@ -33,9 +35,13 @@ public class RoomService {
         return roomRepository.findAll();
     }
 
+    public List<Room> getAvailableRooms() {
+        return roomRepository.findByStatus("AVAILABLE");
+    }
+
     public Room getRoomById(Integer id) {
         return roomRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Room not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
     }
 
     public Room updateRoom(Integer id, RoomDto dto) {
