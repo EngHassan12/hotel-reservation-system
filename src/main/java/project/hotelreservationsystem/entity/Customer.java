@@ -5,31 +5,30 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "users")
+@Table(name = "customers")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class Customer {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer userId;
+    private Integer customerId;
 
     @Column(nullable = false)
-    private String fullName;
+    private String firstName;
 
-    @Column(nullable = false, unique = true)
-    private String username;
+    @Column(nullable = false)
+    private String lastName;
+
+    private String phone;
 
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false)
-    private String passwordHash;
-
-    @Column(nullable = false)
-    private String role; // ADMIN, STAFF, CUSTOMER
+    @Column(columnDefinition = "TEXT")
+    private String address;
 
     private LocalDateTime createdAt;
 

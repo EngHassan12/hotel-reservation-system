@@ -6,9 +6,11 @@ import org.springframework.stereotype.Service;
 import project.hotelreservationsystem.dto.AuthResponseDto;
 import project.hotelreservationsystem.dto.LoginDto;
 import project.hotelreservationsystem.dto.RegisterDto;
+import project.hotelreservationsystem.entity.Customer;
 import project.hotelreservationsystem.entity.User;
 import project.hotelreservationsystem.exception.DuplicateResourceException;
 import project.hotelreservationsystem.exception.ResourceNotFoundException;
+import project.hotelreservationsystem.repository.CustomerRepository;
 import project.hotelreservationsystem.repository.UserRepository;
 
 @Service
@@ -16,12 +18,33 @@ import project.hotelreservationsystem.repository.UserRepository;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
     // Public self-registration — CUSTOMER kaliya
     public AuthResponseDto register(RegisterDto dto) {
-        return createUser(dto, "CUSTOMER");
+        AuthResponseDto response = createUser(dto, "CUSTOMER");
+
+        // Abuur diiwaan Customer ah oo la xiriira (Reservations waxay tixraacayaan Customer, ma ahan User)
+        if (!customerRepository.existsByEmail(dto.getEmail())) {
+            String fullName = dto.getFullName() == null ? "" : dto.getFullName().trim();
+            int spaceIdx = fullName.indexOf(' ');
+            String firstName = spaceIdx > 0 ? fullName.substring(0, spaceIdx) : fullName;
+            String lastName = spaceIdx > 0 ? fullName.substring(spaceIdx + 1).trim() : "";
+
+            Customer customer = Customer.builder()
+                    .firstName(firstName.isEmpty() ? fullName : firstName)
+                    .lastName(lastName)
+                    .phone(dto.getPhone())
+                    .email(dto.getEmail())
+                    .address(dto.getAddress())
+                    .build();
+
+            customerRepository.save(customer);
+        }
+
+        return response;
     }
 
     // ADMIN kaliya ayaa isticmaali kara — abuuraya admin kale
@@ -42,8 +65,6 @@ public class AuthService {
                 .email(dto.getEmail())
                 .passwordHash(passwordEncoder.encode(dto.getPassword()))
                 .role(role)
-                .phone(dto.getPhone())
-                .address(dto.getAddress())
                 .build();
 
         userRepository.save(user);

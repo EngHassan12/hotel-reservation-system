@@ -4,13 +4,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import project.hotelreservationsystem.dto.ReservationDto;
+import project.hotelreservationsystem.entity.Customer;
 import project.hotelreservationsystem.entity.Reservation;
 import project.hotelreservationsystem.entity.Room;
-import project.hotelreservationsystem.entity.User;
 import project.hotelreservationsystem.exception.ResourceNotFoundException;
+import project.hotelreservationsystem.repository.CustomerRepository;
 import project.hotelreservationsystem.repository.ReservationRepository;
 import project.hotelreservationsystem.repository.RoomRepository;
-import project.hotelreservationsystem.repository.UserRepository;
 
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -21,16 +21,17 @@ public class ReservationService {
 
     private final ReservationRepository reservationRepository;
     private final RoomRepository roomRepository;
-    private final UserRepository userRepository;
+    private final CustomerRepository customerRepository;
 
-    private User getCurrentUser() {
+    // Wuxuu ka helayaa Customer-ka la xiriira user-ka hadda login-ka ah (isla email-ka)
+    private Customer getCurrentCustomer() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return customerRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer profile not found for this account"));
     }
 
     public Reservation createReservation(ReservationDto dto) {
-        User customer = getCurrentUser();
+        Customer customer = getCurrentCustomer();
 
         Room room = roomRepository.findById(dto.getRoomId())
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
@@ -63,8 +64,8 @@ public class ReservationService {
     }
 
     public List<Reservation> getMyReservations() {
-        User customer = getCurrentUser();
-        return reservationRepository.findByCustomer_UserId(customer.getUserId());
+        Customer customer = getCurrentCustomer();
+        return reservationRepository.findByCustomer_CustomerId(customer.getCustomerId());
     }
 
     public List<Reservation> getAllReservations() {
